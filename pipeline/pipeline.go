@@ -6,7 +6,6 @@ import (
 
 	"context"
 
-	pdebug "github.com/lestrrat-go/pdebug"
 	"github.com/pkg/errors"
 )
 
@@ -109,10 +108,6 @@ func (p *Pipeline) SetDestination(d Destination) {
 // Run starts the processing. Mutator methods for `Pipeline` cannot be
 // called while `Run` is running.
 func (p *Pipeline) Run(ctx context.Context) (err error) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Pipeline.Run (%s)", ctx.Value("query")).BindError(&err)
-		defer g.End()
-	}
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	defer close(p.done)

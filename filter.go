@@ -6,7 +6,6 @@ import (
 
 	"context"
 
-	"github.com/lestrrat-go/pdebug"
 	"github.com/peco/peco/filter"
 	"github.com/peco/peco/hub"
 	"github.com/peco/peco/internal/buffer"
@@ -28,11 +27,6 @@ func (fp *filterProcessor) Accept(ctx context.Context, in chan interface{}, out 
 // This flusher is run in a separate goroutine so that the filter can
 // run separately from accepting incoming messages
 func flusher(ctx context.Context, f filter.Filter, incoming chan []line.Line, done chan struct{}, out pipeline.ChanOutput) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("flusher goroutine")
-		defer g.End()
-	}
-
 	defer close(done)
 	defer out.SendEndMark("end of filter")
 
@@ -44,7 +38,6 @@ func flusher(ctx context.Context, f filter.Filter, incoming chan []line.Line, do
 			if !ok {
 				return
 			}
-			pdebug.Printf("flusher: %#v", buf)
 			f.Apply(ctx, buf, out)
 			buffer.ReleaseLineListBuf(buf)
 		}
@@ -67,14 +60,9 @@ func acceptAndFilter(ctx context.Context, f filter.Filter, in chan interface{}, 
 	flushTicker := time.NewTicker(50 * time.Millisecond)
 	defer flushTicker.Stop()
 
-	start := time.Now()
-	lines := 0
 	for {
 		select {
 		case <-ctx.Done():
-			if pdebug.Enabled {
-				pdebug.Printf("filter received done")
-			}
 			return
 		case <-flushTicker.C:
 			if len(buf) > 0 {
@@ -85,9 +73,6 @@ func acceptAndFilter(ctx context.Context, f filter.Filter, in chan interface{}, 
 			switch v.(type) {
 			case error:
 				if pipeline.IsEndMark(v.(error)) {
-					if pdebug.Enabled {
-						pdebug.Printf("filter received end mark (read %d lines, %s since starting accept loop)", lines+len(buf), time.Since(start).String())
-					}
 					if len(buf) > 0 {
 						flush <- buf
 						buf = nil
@@ -95,10 +80,6 @@ func acceptAndFilter(ctx context.Context, f filter.Filter, in chan interface{}, 
 				}
 				return
 			case line.Line:
-				if pdebug.Enabled {
-					pdebug.Printf("incoming line")
-					lines++
-				}
 				// We buffer the lines so that we can receive more lines to
 				// process while we filter what we already have. The buffer
 				// size is fairly big, because this really only makes a
@@ -127,11 +108,6 @@ func (f *Filter) Work(ctx context.Context, q hub.Payload) {
 	query, ok := q.Data().(string)
 	if !ok {
 		return
-	}
-
-	if pdebug.Enabled {
-		g := pdebug.Marker("Filter.Work (query=%#v, batch=%#v)", query, q.Batch())
-		defer g.End()
 	}
 
 	state := f.state
@@ -164,10 +140,6 @@ func (f *Filter) Work(ctx context.Context, q hub.Payload) {
 	}(ctx)
 
 	go func() {
-		if pdebug.Enabled {
-			g := pdebug.Marker("Periodic draw request for '%s'", query)
-			defer g.End()
-		}
 		t := time.NewTicker(5 * time.Millisecond)
 		defer t.Stop()
 		defer state.Hub().SendStatusMsg(ctx, "")
@@ -210,9 +182,6 @@ func (f *Filter) Loop(ctx context.Context, cancel func()) error {
 
 			mutex.Lock()
 			if previous != nil {
-				if pdebug.Enabled {
-					pdebug.Printf("Canceling previous query")
-				}
 				previous()
 			}
 			previous = workcancel

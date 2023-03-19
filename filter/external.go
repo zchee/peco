@@ -6,7 +6,6 @@ import (
 	"context"
 	"os/exec"
 
-	pdebug "github.com/lestrrat-go/pdebug"
 	"github.com/peco/peco/line"
 	"github.com/peco/peco/pipeline"
 	"github.com/pkg/errors"
@@ -49,15 +48,8 @@ func (ecf ExternalCmd) String() string {
 func (ecf *ExternalCmd) Apply(ctx context.Context, buf []line.Line, out pipeline.ChanOutput) (err error) {
 	defer func() {
 		if err := recover(); err != nil {
-			if pdebug.Enabled {
-				pdebug.Printf("err: %s", err)
-			}
 		}
 	}() // ignore errors
-	if pdebug.Enabled {
-		g := pdebug.Marker("ExternalCmd.Apply").BindError(&err)
-		defer g.End()
-	}
 
 	query := ctx.Value(queryKey).(string)
 	args := append([]string(nil), ecf.args...)
@@ -68,9 +60,6 @@ func (ecf *ExternalCmd) Apply(ctx context.Context, buf []line.Line, out pipeline
 	}
 
 	cmd := exec.Command(ecf.cmd, args...)
-	if pdebug.Enabled {
-		pdebug.Printf("Executing command %s %v", cmd.Path, cmd.Args)
-	}
 
 	inbuf := &bytes.Buffer{}
 	for _, l := range buf {

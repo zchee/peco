@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"runtime"
 	"sync"
 	"time"
@@ -18,7 +17,6 @@ import (
 	"context"
 
 	"github.com/google/btree"
-	"github.com/lestrrat-go/pdebug"
 	"github.com/peco/peco/filter"
 	"github.com/peco/peco/hub"
 	"github.com/peco/peco/internal/util"
@@ -249,10 +247,6 @@ func (p *Peco) Err() error {
 }
 
 func (p *Peco) Exit(err error) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Peco.Exit (err = %s)", err)
-		defer g.End()
-	}
 	p.err = err
 	if cf := p.cancelFunc; cf != nil {
 		cf()
@@ -264,11 +258,6 @@ func (p *Peco) Keymap() Keymap {
 }
 
 func (p *Peco) Setup() (err error) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Peco.Setup").BindError(&err)
-		defer g.End()
-	}
-
 	if err := p.config.Init(); err != nil {
 		return errors.Wrap(err, "failed to initialize config")
 	}
@@ -312,11 +301,6 @@ func (p *Peco) selectOneAndExitIfPossible() {
 }
 
 func (p *Peco) Run(ctx context.Context) (err error) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Peco.Run").BindError(&err)
-		defer g.End()
-	}
-
 	// do this only once
 	var readyOnce sync.Once
 	defer readyOnce.Do(func() { close(p.readyCh) })
@@ -330,9 +314,6 @@ func (p *Peco) Run(ctx context.Context) (err error) {
 	ctx, _cancel = context.WithCancel(ctx)
 	cancel := func() {
 		_cancelOnce.Do(func() {
-			if pdebug.Enabled {
-				pdebug.Printf("Peco.Run cancel called")
-			}
 			_cancel()
 		})
 	}
@@ -374,10 +355,6 @@ func (p *Peco) Run(ctx context.Context) (err error) {
 	if p.Query().Len() <= 0 {
 		// Re-set the source only if there are no queries
 		p.ResetCurrentLineBuffer()
-	}
-
-	if pdebug.Enabled {
-		pdebug.Printf("peco is now ready, go go go!")
 	}
 
 	// If this is enabled, we need to check if we have 1 line only
@@ -453,11 +430,6 @@ func (p *Peco) parseCommandLine(opts *CLIOptions, args *[]string, argv []string)
 }
 
 func (p *Peco) SetupSource(ctx context.Context) (s *Source, err error) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Peco.SetupSource").BindError(&err)
-		defer g.End()
-	}
-
 	var in io.Reader
 	var filename string
 	var isInfinite bool
@@ -467,15 +439,9 @@ func (p *Peco) SetupSource(ctx context.Context) (s *Source, err error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to open file for input")
 		}
-		if pdebug.Enabled {
-			pdebug.Printf("Using %s as input", p.args[1])
-		}
 		in = f
 		filename = p.args[1]
 	case !util.IsTty(p.Stdin):
-		if pdebug.Enabled {
-			pdebug.Printf("Using p.Stdin as input")
-		}
 		in = p.Stdin
 		filename = `-`
 		// XXX we detect that this is potentially an "infinite" source if
@@ -488,11 +454,6 @@ func (p *Peco) SetupSource(ctx context.Context) (s *Source, err error) {
 	}
 
 	src := NewSource(filename, in, isInfinite, p.idgen, p.bufferSize, p.enableSep)
-
-	// Block until we receive something from `in`
-	if pdebug.Enabled {
-		pdebug.Printf("Blocking until we read something in source...")
-	}
 
 	go src.Setup(ctx, p)
 	<-src.Ready()
@@ -658,10 +619,6 @@ func (p *Peco) CurrentLineBuffer() Buffer {
 func (p *Peco) SetCurrentLineBuffer(b Buffer) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
-	if pdebug.Enabled {
-		g := pdebug.Marker("Peco.SetCurrentLineBuffer %s", reflect.TypeOf(b).String())
-		defer g.End()
-	}
 	p.currentLineBuffer = b
 	go p.Hub().SendDraw(context.Background(), nil)
 }
@@ -671,11 +628,6 @@ func (p *Peco) ResetCurrentLineBuffer() {
 }
 
 func (p *Peco) sendQuery(ctx context.Context, q string, nextFunc func()) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("sending query to filter goroutine (q=%v, isInfinite=%t)", q, p.source.IsInfinite())
-		defer g.End()
-	}
-
 	if p.source.IsInfinite() {
 		// If the source is a stream, we can't do batch mode, and hence
 		// we can't guarantee proper timing. But... okay, we simulate
@@ -701,19 +653,11 @@ func (p *Peco) sendQuery(ctx context.Context, q string, nextFunc func()) {
 // if nextFunc is non-nil, then nextFunc is executed after the query is
 // executed
 func (p *Peco) ExecQuery(nextFunc func()) bool {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Peco.ExecQuery")
-		defer g.End()
-	}
-
 	hub := p.Hub()
 
 	select {
 	case <-p.Ready():
 	default:
-		if pdebug.Enabled {
-			pdebug.Printf("peco is not ready yet, ignoring.")
-		}
 		return false
 	}
 
@@ -721,9 +665,6 @@ func (p *Peco) ExecQuery(nextFunc func()) bool {
 	// the raw source buffer
 	q := p.Query()
 	if q.Len() <= 0 {
-		if pdebug.Enabled {
-			pdebug.Printf("empty query, reset buffer")
-		}
 		p.ResetCurrentLineBuffer()
 
 		hub.Batch(context.Background(), func(ctx context.Context) {
@@ -737,10 +678,6 @@ func (p *Peco) ExecQuery(nextFunc func()) bool {
 
 	delay := p.QueryExecDelay()
 	if delay <= 0 {
-		if pdebug.Enabled {
-			pdebug.Printf("sending query (immediate)")
-		}
-
 		p.sendQuery(context.Background(), q.String(), nextFunc)
 		return true
 	}
@@ -749,26 +686,13 @@ func (p *Peco) ExecQuery(nextFunc func()) bool {
 	defer p.queryExecMutex.Unlock()
 
 	if p.queryExecTimer != nil {
-		if pdebug.Enabled {
-			pdebug.Printf("timer is non-nil")
-		}
 		return true
 	}
 
 	// Wait $delay millisecs before sending the query
 	// if a new input comes in, batch them up
-	if pdebug.Enabled {
-		pdebug.Printf("sending query (with delay)")
-	}
 	p.queryExecTimer = time.AfterFunc(delay, func() {
-		if pdebug.Enabled {
-			pdebug.Printf("delayed query sent")
-		}
 		p.sendQuery(context.Background(), q.String(), nextFunc)
-
-		if pdebug.Enabled {
-			pdebug.Printf("delayed query executed")
-		}
 
 		p.queryExecMutex.Lock()
 		defer p.queryExecMutex.Unlock()
@@ -779,10 +703,6 @@ func (p *Peco) ExecQuery(nextFunc func()) bool {
 }
 
 func (p *Peco) PrintResults() {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Peco.PrintResults")
-		defer g.End()
-	}
 	selection := p.Selection()
 	if selection.Len() == 0 {
 		if l, err := p.CurrentLineBuffer().LineAt(p.Location().LineNumber()); err == nil {
@@ -800,9 +720,6 @@ func (p *Peco) PrintResults() {
 
 	var buf bytes.Buffer
 
-	if pdebug.Enabled {
-		pdebug.Printf("--print-query was %t", p.printQuery)
-	}
 	if p.printQuery {
 		buf.WriteString(p.Query().String())
 		buf.WriteByte('\n')

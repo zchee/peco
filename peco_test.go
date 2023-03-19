@@ -12,7 +12,6 @@ import (
 
 	"context"
 
-	"github.com/lestrrat-go/pdebug"
 	"github.com/nsf/termbox-go"
 	"github.com/peco/peco/hub"
 	"github.com/peco/peco/internal/util"
@@ -362,9 +361,6 @@ func TestGHIssue367(t *testing.T) {
 		copy(p, src[0])
 		p = p[:l]
 		src = src[1:]
-		if pdebug.Enabled {
-			pdebug.Printf("reader func returning %#v", string(p))
-		}
 		return l, nil
 	})
 	buf := bytes.Buffer{}

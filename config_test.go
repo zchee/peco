@@ -101,7 +101,7 @@ func TestStringsToStyle(t *testing.T) {
 		},
 		stringsToStyleTest{
 			strings: []string{"underline", "on_240", "214"},
-			style:   &Style{fg: (214+1) | termbox.AttrUnderline, bg: 240+1},
+			style:   &Style{fg: (214 + 1) | termbox.AttrUnderline, bg: 240 + 1},
 		},
 	}
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/nsf/termbox-go"
 	"github.com/peco/peco/filter"
@@ -136,7 +136,7 @@ func stringsToStyle(style *Style, raw []string) error {
 			style.fg = fg
 		} else {
 			if fg, err := strconv.ParseUint(s, 10, 8); err == nil {
-				style.fg = termbox.Attribute(fg+1)
+				style.fg = termbox.Attribute(fg + 1)
 			}
 		}
 
@@ -146,7 +146,7 @@ func stringsToStyle(style *Style, raw []string) error {
 		} else {
 			if strings.HasPrefix(s, "on_") {
 				if bg, err := strconv.ParseUint(s[3:], 10, 8); err == nil {
-					style.bg = termbox.Attribute(bg+1)
+					style.bg = termbox.Attribute(bg + 1)
 				}
 			}
 		}

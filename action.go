@@ -11,7 +11,6 @@ import (
 	"context"
 
 	"github.com/google/btree"
-	"github.com/lestrrat-go/pdebug"
 	"github.com/nsf/termbox-go"
 	"github.com/peco/peco/internal/keyseq"
 	"github.com/peco/peco/internal/util"
@@ -184,11 +183,6 @@ func doAcceptChar(ctx context.Context, state *Peco, e termbox.Event) {
 }
 
 func doRotateFilter(ctx context.Context, state *Peco, e termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doRotateFilter")
-		defer g.End()
-	}
-
 	filters := state.Filters()
 	filters.Rotate()
 
@@ -199,11 +193,6 @@ func doRotateFilter(ctx context.Context, state *Peco, e termbox.Event) {
 }
 
 func doBackToInitialFilter(ctx context.Context, state *Peco, e termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doBackToInitialFilter")
-		defer g.End()
-	}
-
 	filters := state.Filters()
 	filters.Reset()
 
@@ -214,11 +203,6 @@ func doBackToInitialFilter(ctx context.Context, state *Peco, e termbox.Event) {
 }
 
 func doToggleSelection(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doToggleSelection")
-		defer g.End()
-	}
-
 	l, err := state.CurrentLineBuffer().LineAt(state.Location().LineNumber())
 	if err != nil {
 		return
@@ -233,11 +217,6 @@ func doToggleSelection(ctx context.Context, state *Peco, _ termbox.Event) {
 }
 
 func doToggleRangeMode(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doToggleRangeMode")
-		defer g.End()
-	}
-
 	r := state.SelectionRangeStart()
 	if r.Valid() {
 		r.Reset()
@@ -274,11 +253,6 @@ func doSelectAll(ctx context.Context, state *Peco, _ termbox.Event) {
 }
 
 func doSelectVisible(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doSelectVisible")
-		defer g.End()
-	}
-
 	b := state.CurrentLineBuffer()
 	selection := state.Selection()
 	loc := state.Location()
@@ -304,11 +278,6 @@ func (err errCollectResults) CollectResults() bool {
 	return true
 }
 func doFinish(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doFinish")
-		defer g.End()
-	}
-
 	ccarg := state.execOnFinish
 	if len(ccarg) == 0 {
 		state.Exit(errCollectResults{})
@@ -332,7 +301,7 @@ func doFinish(ctx context.Context, state *Peco, _ termbox.Event) {
 	})
 
 	var err error
-	state.Hub().SendStatusMsg(ctx, "Executing " + ccarg)
+	state.Hub().SendStatusMsg(ctx, "Executing "+ccarg)
 	cmd := util.Shell(ccarg)
 	cmd.Stdin = &stdin
 	cmd.Stdout = state.Stdout
@@ -394,18 +363,10 @@ func doCancel(ctx context.Context, state *Peco, e termbox.Event) {
 }
 
 func doSelectDown(ctx context.Context, state *Peco, e termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doSelectDown")
-		defer g.End()
-	}
 	state.Hub().SendPaging(ctx, ToLineBelow)
 }
 
 func doSelectUp(ctx context.Context, state *Peco, e termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doSelectUp")
-		defer g.End()
-	}
 	state.Hub().SendPaging(ctx, ToLineAbove)
 }
 
@@ -448,11 +409,6 @@ func doToggleSelectionAndSelectNext(ctx context.Context, state *Peco, e termbox.
 }
 
 func doInvertSelection(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doInvertSelection")
-		defer g.End()
-	}
-
 	selection := state.Selection()
 	b := state.CurrentLineBuffer()
 
@@ -473,11 +429,6 @@ func doInvertSelection(ctx context.Context, state *Peco, _ termbox.Event) {
 }
 
 func doDeleteBackwardWord(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doDeleteBackwardWord")
-		defer g.End()
-	}
-
 	c := state.Caret()
 	if c.Pos() == 0 {
 		return
@@ -703,26 +654,15 @@ func doDeleteForwardChar(ctx context.Context, state *Peco, _ termbox.Event) {
 }
 
 func doDeleteBackwardChar(ctx context.Context, state *Peco, e termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doDeleteBackwardChar")
-		defer g.End()
-	}
-
 	q := state.Query()
 	c := state.Caret()
 	qlen := q.Len()
 	if qlen <= 0 {
-		if pdebug.Enabled {
-			pdebug.Printf("doDeleteBackwardChar: QueryLen <= 0, do nothing")
-		}
 		return
 	}
 
 	pos := c.Pos()
 	if pos == 0 {
-		if pdebug.Enabled {
-			pdebug.Printf("doDeleteBackwardChar: Already at position 0")
-		}
 		// No op
 		return
 	}
@@ -747,11 +687,6 @@ func doRefreshScreen(ctx context.Context, state *Peco, _ termbox.Event) {
 }
 
 func doToggleQuery(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doToggleQuery")
-		defer g.End()
-	}
-
 	q := state.Query()
 	if q.Len() == 0 {
 		q.RestoreSavedQuery()
@@ -770,18 +705,10 @@ func doKonamiCommand(ctx context.Context, state *Peco, e termbox.Event) {
 }
 
 func doToggleSingleKeyJump(ctx context.Context, state *Peco, e termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doToggleSingleKeyJump")
-		defer g.End()
-	}
 	state.ToggleSingleKeyJumpMode()
 }
 
 func doToggleViewArround(ctx context.Context, state *Peco, e termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doToggleViewArround")
-		defer g.End()
-	}
 	q := state.Query()
 
 	if q.Len() > 0 {
@@ -797,11 +724,6 @@ func doToggleViewArround(ctx context.Context, state *Peco, e termbox.Event) {
 }
 
 func doGoToNextSelection(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doGoToNextSelection")
-		defer g.End()
-	}
-
 	selection := state.Selection()
 
 	if selection.Len() == 0 {
@@ -847,11 +769,6 @@ func doGoToNextSelection(ctx context.Context, state *Peco, _ termbox.Event) {
 }
 
 func doGoToPreviousSelection(ctx context.Context, state *Peco, _ termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doGoToPreviousSelection")
-		defer g.End()
-	}
-
 	selection := state.Selection()
 
 	if selection.Len() == 0 {
@@ -897,10 +814,6 @@ func doGoToPreviousSelection(ctx context.Context, state *Peco, _ termbox.Event) 
 }
 
 func doSingleKeyJump(ctx context.Context, state *Peco, e termbox.Event) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("doSingleKeyJump %c", e.Ch)
-		defer g.End()
-	}
 	index, ok := state.SingleKeyJumpIndex(e.Ch)
 	if !ok {
 		// Couldn't find it? Do nothing

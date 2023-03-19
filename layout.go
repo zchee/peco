@@ -7,10 +7,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/lestrrat-go/pdebug"
 	"github.com/mattn/go-runewidth"
 	"github.com/nsf/termbox-go"
-	"github.com/peco/peco/line"
+	pecoline "github.com/peco/peco/line"
 	"github.com/pkg/errors"
 )
 
@@ -82,11 +81,6 @@ func NewUserPrompt(screen Screen, anchor VerticalAnchor, anchorOffset int, promp
 
 // Draw draws the query prompt
 func (u UserPrompt) Draw(state *Peco) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("UserPrompt.Draw")
-		defer g.End()
-	}
-
 	location := u.AnchorPosition()
 
 	// print "QUERY>"
@@ -230,11 +224,6 @@ func (s *StatusBar) setClearTimer(t *time.Timer) {
 // PrintStatus prints a new status message. This also resets the
 // timer created by ClearStatus()
 func (s *StatusBar) PrintStatus(msg string, clearDelay time.Duration) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("StatusBar.PrintStatus")
-		defer g.End()
-	}
-
 	s.stopTimer()
 
 	location := s.AnchorPosition()
@@ -291,7 +280,7 @@ func (s *StatusBar) PrintStatus(msg string, clearDelay time.Duration) {
 func NewListArea(screen Screen, anchor VerticalAnchor, anchorOffset int, sortTopDown bool, styles *StyleSet) *ListArea {
 	return &ListArea{
 		AnchorSettings: NewAnchorSettings(screen, anchor, anchorOffset),
-		displayCache:   []line.Line{},
+		displayCache:   []pecoline.Line{},
 		dirty:          false,
 		sortTopDown:    sortTopDown,
 		styles:         styles,
@@ -299,7 +288,7 @@ func NewListArea(screen Screen, anchor VerticalAnchor, anchorOffset int, sortTop
 }
 
 func (l *ListArea) purgeDisplayCache() {
-	l.displayCache = []line.Line{}
+	l.displayCache = []pecoline.Line{}
 }
 
 func (l *ListArea) IsDirty() bool {
@@ -324,11 +313,6 @@ type DrawOptions struct {
 
 // Draw displays the ListArea on the screen
 func (l *ListArea) Draw(state *Peco, parent Layout, perPage int, options *DrawOptions) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("ListArea.Draw pp = %d, options = %#v", perPage, options)
-		defer g.End()
-	}
-
 	if perPage < 1 {
 		panic("perPage < 1 (was " + strconv.Itoa(perPage) + ")")
 	}
@@ -361,9 +345,6 @@ func (l *ListArea) Draw(state *Peco, parent Layout, perPage int, options *DrawOp
 	}
 
 	pf := loc.PageCrop()
-	if pdebug.Enabled {
-		pdebug.Printf("Cropping linebuf which contains %d lines at page %d (%d entries per page)", linebuf.Size(), pf.currentPage, pf.perPage)
-	}
 	buf := pf.Crop(linebuf)
 	bufsiz := buf.Size()
 
@@ -384,7 +365,7 @@ func (l *ListArea) Draw(state *Peco, parent Layout, perPage int, options *DrawOp
 	// previously drawn lines are cached. first, truncate the cache
 	// to current size of the drawable area
 	if ldc := int(len(l.displayCache)); ldc != perPage {
-		newCache := make([]line.Line, perPage)
+		newCache := make([]pecoline.Line, perPage)
 		copy(newCache, l.displayCache)
 		l.displayCache = newCache
 	} else if perPage > bufsiz {
@@ -396,10 +377,6 @@ func (l *ListArea) Draw(state *Peco, parent Layout, perPage int, options *DrawOp
 
 	// If our buffer is smaller than perPage, we may need to
 	// clear some lines
-	if pdebug.Enabled {
-		pdebug.Printf("ListArea.Draw: buffer size is %d, our view area is %d", bufsiz, perPage)
-	}
-
 	for n := bufsiz; n < perPage; n++ {
 		if l.sortTopDown {
 			y = n + start
@@ -591,15 +568,12 @@ func (l *ListArea) Draw(state *Peco, parent Layout, perPage int, options *DrawOp
 				XOffset: xOffset,
 				Fg:      fgAttr,
 				Bg:      bgAttr,
-				Msg:     line[m[1]:len(line)],
+				Msg:     line[m[1]:],
 				Fill:    true,
 			})
 		}
 	}
 	l.SetDirty(false)
-	if pdebug.Enabled {
-		pdebug.Printf("ListArea.Draw: Written total of %d lines (%d cached)", written+cached, cached)
-	}
 }
 
 func maxOf(a, b int) int {
@@ -639,10 +613,6 @@ func (l *BasicLayout) PurgeDisplayCache() {
 
 // CalculatePage calculates which page we're displaying
 func (l *BasicLayout) CalculatePage(state *Peco, perPage int) error {
-	if pdebug.Enabled {
-		g := pdebug.Marker("BasicLayout.Calculate %d", perPage)
-		defer g.End()
-	}
 	buf := state.CurrentLineBuffer()
 	loc := state.Location()
 	loc.SetPage((loc.LineNumber() / perPage) + 1)
@@ -674,11 +644,6 @@ func (l *BasicLayout) DrawPrompt(state *Peco) {
 
 // DrawScreen draws the entire screen
 func (l *BasicLayout) DrawScreen(state *Peco, options *DrawOptions) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("BasicLayout.DrawScreen")
-		defer g.End()
-	}
-
 	perPage := l.linesPerPage()
 
 	if err := l.CalculatePage(state, perPage); err != nil {
@@ -704,13 +669,6 @@ func (l *BasicLayout) linesPerPage() int {
 		// error more gracefully, the consumers of this method do not really
 		// do anything with this error. I think it's just safe to "2", which just
 		// means no space left to draw anything
-		if pdebug.Enabled {
-			pdebug.Printf(
-				"linesPerPage is < 1 (height = %d, reservedLines = %d), forcing return value of 2",
-				height,
-				reservedLines,
-			)
-		}
 		return 2
 	}
 	return pp
@@ -733,12 +691,6 @@ func verticalScroll(state *Peco, l *BasicLayout, p PagingRequest) bool {
 	loc := state.Location()
 	lineBefore := loc.LineNumber()
 	lineno := lineBefore
-
-	if pdebug.Enabled {
-		defer func() {
-			pdebug.Printf("currentLine changed from %d -> %d", lineBefore, state.Location().LineNumber())
-		}()
-	}
 
 	buf := state.CurrentLineBuffer()
 	lcur := buf.Size()

@@ -1,9 +1,5 @@
 package filter
 
-import (
-	pdebug "github.com/lestrrat-go/pdebug"
-)
-
 func (fs *Set) Reset() {
 	fs.mutex.Lock()
 	defer fs.mutex.Unlock()
@@ -29,9 +25,6 @@ func (fs *Set) Rotate() {
 	fs.current++
 	if fs.current >= len(fs.filters) {
 		fs.current = 0
-	}
-	if pdebug.Enabled {
-		pdebug.Printf("Set.Rotate: now filter in effect is %s", fs.filters[fs.current])
 	}
 }
 

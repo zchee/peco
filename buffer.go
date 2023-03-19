@@ -1,11 +1,8 @@
 package peco
 
 import (
-	"time"
-
 	"context"
 
-	"github.com/lestrrat-go/pdebug"
 	runewidth "github.com/mattn/go-runewidth"
 	"github.com/peco/peco/line"
 	"github.com/peco/peco/pipeline"
@@ -88,10 +85,6 @@ func bufferSize(lines []line.Line) int {
 func (mb *MemoryBuffer) Reset() {
 	mb.mutex.Lock()
 	defer mb.mutex.Unlock()
-	if pdebug.Enabled {
-		g := pdebug.Marker("MemoryBuffer.Reset")
-		defer g.End()
-	}
 	mb.done = make(chan struct{})
 	mb.lines = []line.Line(nil)
 }
@@ -103,31 +96,20 @@ func (mb *MemoryBuffer) Done() <-chan struct{} {
 }
 
 func (mb *MemoryBuffer) Accept(ctx context.Context, in chan interface{}, _ pipeline.ChanOutput) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("MemoryBuffer.Accept")
-		defer g.End()
-	}
 	defer func() {
 		mb.mutex.Lock()
 		close(mb.done)
 		mb.mutex.Unlock()
 	}()
 
-	start := time.Now()
 	for {
 		select {
 		case <-ctx.Done():
-			if pdebug.Enabled {
-				pdebug.Printf("MemoryBuffer received context done")
-			}
 			return
 		case v := <-in:
 			switch v.(type) {
 			case error:
 				if pipeline.IsEndMark(v.(error)) {
-					if pdebug.Enabled {
-						pdebug.Printf("MemoryBuffer received end mark (read %d lines, %s since starting accept loop)", len(mb.lines), time.Since(start).String())
-					}
 					return
 				}
 			case line.Line:

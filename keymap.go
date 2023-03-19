@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"github.com/lestrrat-go/pdebug"
+
 	"github.com/nsf/termbox-go"
 	"github.com/peco/peco/internal/keyseq"
 	"github.com/pkg/errors"
@@ -27,11 +27,6 @@ func (km Keymap) Sequence() Keyseq {
 const isTopLevelActionCall = "peco.isTopLevelActionCall"
 
 func (km Keymap) ExecuteAction(ctx context.Context, state *Peco, ev termbox.Event) (err error) {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Keymap.ExecuteAction %v", ev).BindError(&err)
-		defer g.End()
-	}
-
 	a := km.LookupAction(ev)
 	if a == nil {
 		return errors.New("action not found")
@@ -59,19 +54,10 @@ func (km Keymap) LookupAction(ev termbox.Event) Action {
 	switch err {
 	case nil:
 		// Found an action!
-		if pdebug.Enabled {
-			pdebug.Printf("Keymap.Handler: Fetched action")
-		}
 		return wrapClearSequence(action.(Action))
 	case keyseq.ErrInSequence:
-		if pdebug.Enabled {
-			pdebug.Printf("Keymap.Handler: Waiting for more commands...")
-		}
 		return wrapRememberSequence(ActionFunc(doNothing))
 	default:
-		if pdebug.Enabled {
-			pdebug.Printf("Keymap.Handler: Defaulting to doAcceptChar")
-		}
 		return wrapClearSequence(ActionFunc(doAcceptChar))
 	}
 }

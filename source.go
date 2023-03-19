@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lestrrat-go/pdebug"
 	"github.com/peco/peco/internal/util"
 	"github.com/peco/peco/line"
 	"github.com/peco/peco/pipeline"
@@ -87,9 +86,6 @@ func (s *Source) Setup(ctx context.Context, state *Peco) {
 		// Note: this will be a no-op if notify.Do has been called before
 		defer notify.Do(notifycb)
 
-		if pdebug.Enabled {
-			pdebug.Printf("Source: using buffer size of %dkb", state.maxScanBufferSize)
-		}
 		scanbuf := make([]byte, state.maxScanBufferSize*1024)
 		scanner := bufio.NewScanner(s.in)
 		scanner.Buffer(scanbuf, state.maxScanBufferSize*1024)
@@ -106,18 +102,11 @@ func (s *Source) Setup(ctx context.Context, state *Peco) {
 		lines := make(chan string)
 		go func() {
 			var scanned int
-			if pdebug.Enabled {
-				defer func() { pdebug.Printf("Source scanned %d lines", scanned) }()
-			}
-
 			defer close(lines)
 			for scanner.Scan() {
 				newLine := scanner.Text()
 				select {
 				case <-ctx.Done():
-					if pdebug.Enabled {
-						pdebug.Printf("Bailing out of source setup text reader loop, because ctx was canceled")
-					}
 					return
 				case lines <- newLine:
 				}
@@ -131,15 +120,9 @@ func (s *Source) Setup(ctx context.Context, state *Peco) {
 		for loop := true; loop; {
 			select {
 			case <-ctx.Done():
-				if pdebug.Enabled {
-					pdebug.Printf("Bailing out of source setup, because ctx was canceled")
-				}
 				return
 			case l, ok := <-lines:
 				if !ok {
-					if pdebug.Enabled {
-						pdebug.Printf("No more lines to read...")
-					}
 					loop = false
 					break
 				}
@@ -149,22 +132,12 @@ func (s *Source) Setup(ctx context.Context, state *Peco) {
 				notify.Do(notifycb)
 			}
 		}
-
-		if pdebug.Enabled {
-			pdebug.Printf("Read all %d lines from source", readCount)
-		}
 	})
 }
 
 // Start starts
 func (s *Source) Start(ctx context.Context, out pipeline.ChanOutput) {
 	var sent int
-	// I should be the only one running this method until I bail out
-	if pdebug.Enabled {
-		g := pdebug.Marker("Source.Start (%d lines in buffer)", len(s.lines))
-		defer g.End()
-		defer func() { pdebug.Printf("Source sent %d lines", sent) }()
-	}
 	defer out.SendEndMark("end of input")
 
 	var resume bool
@@ -179,9 +152,6 @@ func (s *Source) Start(ctx context.Context, out pipeline.ChanOutput) {
 		for _, l := range s.lines {
 			select {
 			case <-ctx.Done():
-				if pdebug.Enabled {
-					pdebug.Printf("Source: context.Done detected")
-				}
 				return
 			default:
 				out.Send(l)
@@ -209,9 +179,6 @@ func (s *Source) Start(ctx context.Context, out pipeline.ChanOutput) {
 		for i := prev; i < upto; i++ {
 			select {
 			case <-ctx.Done():
-				if pdebug.Enabled {
-					pdebug.Printf("Source: context.Done detected")
-				}
 				return
 			default:
 				l, _ := s.LineAt(i)
@@ -235,10 +202,6 @@ func (s *Source) Start(ctx context.Context, out pipeline.ChanOutput) {
 // Reset resets the state of the source object so that it
 // is ready to feed the filters
 func (s *Source) Reset() {
-	if pdebug.Enabled {
-		g := pdebug.Marker("Source.Reset")
-		defer g.End()
-	}
 	s.ChanOutput = pipeline.ChanOutput(make(chan interface{}))
 }
 
